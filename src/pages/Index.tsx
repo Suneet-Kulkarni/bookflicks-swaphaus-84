@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
@@ -80,11 +81,11 @@ const Index = () => {
                 Swap Books, Share Stories
               </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
                 <AnimatedWords 
                   text="Swap. Share. Discover." 
                   characterDelay={50} 
-                  shimmerColor="gradient"
+                  shimmerColor="bright"
                 />
               </h1>
               <p className="text-lg text-white/90 mb-8">
