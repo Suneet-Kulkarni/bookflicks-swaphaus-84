@@ -94,9 +94,7 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    background-image: 
-      radial-gradient(at 80% 0%, hsla(189, 100%, 96%, 0.3) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, hsla(355, 100%, 93%, 0.3) 0px, transparent 50%);
+    background: linear-gradient(to right, #8A4FFF, #36D6FF);
     background-attachment: fixed;
   }
 
@@ -141,5 +139,52 @@
 
   .label {
     @apply text-bookswap-navy font-medium mb-1 block;
+  }
+  
+  /* New animated components */
+  .shimmer-text {
+    @apply bg-gradient-to-r from-white via-white/70 to-white bg-[length:200%_100%] animate-text-shimmer;
+  }
+  
+  .floating-element {
+    @apply animate-float;
+  }
+  
+  .bouncing-element {
+    @apply animate-bounce-gentle;
+  }
+  
+  .gradient-button {
+    @apply relative overflow-hidden bg-gradient-to-r from-bookswap-coral to-bookswap-amber text-white rounded-full px-8 py-3 font-medium transform transition-all hover:-translate-y-1 hover:shadow-lg;
+  }
+  
+  .gradient-button::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-bookswap-amber to-bookswap-coral opacity-0 transition-opacity duration-300;
+  }
+  
+  .gradient-button:hover::before {
+    @apply opacity-100;
+  }
+  
+  .gradient-button span {
+    @apply relative z-10;
+  }
+  
+  .animated-gradient {
+    background-size: 200% 200%;
+    animation: gradient-shift 5s ease infinite;
+  }
+  
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
   }
 }
