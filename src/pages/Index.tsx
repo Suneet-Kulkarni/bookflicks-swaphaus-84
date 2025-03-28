@@ -83,7 +83,11 @@ const Index = () => {
               
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white">
                 <div className="shimmer-text">
-                  <AnimatedWords text="Swap. Share. Discover." characterDelay={50} />
+                  <AnimatedWords 
+                    text="Swap. Share. Discover." 
+                    characterDelay={50} 
+                    shimmerColor="gold"
+                  />
                 </div>
               </h1>
               <p className="text-lg text-white/90 mb-8">

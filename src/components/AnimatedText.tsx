@@ -41,15 +41,24 @@ interface AnimatedWordProps {
   className?: string;
   wordDelay?: number;
   characterDelay?: number;
+  shimmerColor?: "gold" | "coral" | "teal" | "default";
 }
 
 export const AnimatedWords: React.FC<AnimatedWordProps> = ({
   text,
   className,
   wordDelay = 100,
-  characterDelay = 0
+  characterDelay = 0,
+  shimmerColor = "default"
 }) => {
   const words = text.split(" ");
+  
+  const shimmerClasses = {
+    default: "bg-gradient-to-r from-white via-white/70 to-white bg-[length:200%_100%] animate-text-shimmer",
+    gold: "bg-gradient-to-r from-bookswap-amber via-yellow-300 to-bookswap-amber bg-[length:200%_100%] animate-text-shimmer",
+    coral: "bg-gradient-to-r from-bookswap-coral via-pink-300 to-bookswap-coral bg-[length:200%_100%] animate-text-shimmer",
+    teal: "bg-gradient-to-r from-bookswap-teal via-cyan-300 to-bookswap-teal bg-[length:200%_100%] animate-text-shimmer"
+  };
   
   return (
     <>
