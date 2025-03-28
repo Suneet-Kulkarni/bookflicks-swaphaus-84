@@ -41,7 +41,7 @@ interface AnimatedWordProps {
   className?: string;
   wordDelay?: number;
   characterDelay?: number;
-  shimmerColor?: "gold" | "coral" | "teal" | "default";
+  shimmerColor?: "purple" | "blue" | "gradient" | "default";
 }
 
 export const AnimatedWords: React.FC<AnimatedWordProps> = ({
@@ -54,14 +54,14 @@ export const AnimatedWords: React.FC<AnimatedWordProps> = ({
   const words = text.split(" ");
   
   const shimmerClasses = {
-    default: "bg-gradient-to-r from-white via-white/70 to-white bg-[length:200%_100%] animate-text-shimmer",
-    gold: "bg-gradient-to-r from-bookswap-amber via-yellow-300 to-bookswap-amber bg-[length:200%_100%] animate-text-shimmer",
-    coral: "bg-gradient-to-r from-bookswap-coral via-pink-300 to-bookswap-coral bg-[length:200%_100%] animate-text-shimmer",
-    teal: "bg-gradient-to-r from-bookswap-teal via-cyan-300 to-bookswap-teal bg-[length:200%_100%] animate-text-shimmer"
+    default: "text-white",
+    purple: "bg-gradient-to-r from-purple-400 via-bookswap-purple to-purple-300 bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer",
+    blue: "bg-gradient-to-r from-bookswap-blue via-cyan-300 to-bookswap-blue bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer",
+    gradient: "bg-gradient-to-r from-bookswap-purple via-pink-400 to-bookswap-blue bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer"
   };
   
   return (
-    <>
+    <span className={shimmerClasses[shimmerColor]}>
       {words.map((word, index) => (
         <span key={index} className="inline-block">
           {characterDelay > 0 ? (
@@ -85,7 +85,7 @@ export const AnimatedWords: React.FC<AnimatedWordProps> = ({
           {index < words.length - 1 && " "}
         </span>
       ))}
-    </>
+    </span>
   );
 };
 
