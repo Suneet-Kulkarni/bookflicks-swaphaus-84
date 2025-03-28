@@ -41,7 +41,7 @@ interface AnimatedWordProps {
   className?: string;
   wordDelay?: number;
   characterDelay?: number;
-  shimmerColor?: "purple" | "blue" | "gradient" | "bright" | "default";
+  shimmerColor?: "purple" | "blue" | "gradient" | "bright" | "default" | "spotlight" | "glow";
 }
 
 export const AnimatedWords: React.FC<AnimatedWordProps> = ({
@@ -58,7 +58,9 @@ export const AnimatedWords: React.FC<AnimatedWordProps> = ({
     purple: "bg-gradient-to-r from-purple-400 via-bookswap-purple to-purple-300 bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer",
     blue: "bg-gradient-to-r from-bookswap-blue via-cyan-300 to-bookswap-blue bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer",
     gradient: "bg-gradient-to-r from-bookswap-purple via-pink-400 to-bookswap-blue bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer",
-    bright: "bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-400 bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer font-extrabold text-shadow-sm"
+    bright: "bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-400 bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer font-extrabold text-shadow-sm",
+    spotlight: "text-white font-extrabold tracking-wider uppercase text-shadow-lg border-b-4 border-bookswap-teal px-2 py-1",
+    glow: "text-white font-extrabold animate-pulse-bright drop-shadow-glow"
   };
   
   return (

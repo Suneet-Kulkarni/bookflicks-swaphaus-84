@@ -81,13 +81,17 @@ const Index = () => {
                 Swap Books, Share Stories
               </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-                <AnimatedWords 
-                  text="Swap. Share. Discover." 
-                  characterDelay={50} 
-                  shimmerColor="bright"
-                />
-              </h1>
+              <div className="motto-container mb-6 inline-block">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-2">
+                  <AnimatedWords 
+                    text="Swap. Share. Discover." 
+                    characterDelay={50} 
+                    shimmerColor="glow"
+                  />
+                </h1>
+                <div className="h-1 bg-gradient-to-r from-bookswap-teal via-bookswap-coral to-bookswap-amber w-full rounded-full animate-fade-in-up" style={{ animationDelay: '1s' }}></div>
+              </div>
+              
               <p className="text-lg text-white/90 mb-8">
                 <AnimatedWords 
                   text="Revolutionize your reading experience. Trade paperbacks, find your next obsession."

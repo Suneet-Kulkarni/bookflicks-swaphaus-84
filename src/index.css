@@ -175,6 +175,27 @@
     animation: gradient-shift 5s ease infinite;
   }
   
+  .motto-container {
+    @apply relative py-2 px-4 rounded-xl;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, transparent 70%);
+  }
+  
+  .motto-highlight {
+    @apply relative inline-block;
+  }
+  
+  .motto-highlight::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-1 bg-bookswap-coral rounded-full;
+    animation: expand-line 1.5s ease-out forwards;
+    transform-origin: left;
+  }
+  
+  @keyframes expand-line {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  
   @keyframes gradient-shift {
     0% {
       background-position: 0% 50%;
@@ -198,6 +219,19 @@
   }
   
   .text-shadow-lg {
-    text-shadow: 0 0 16px rgba(0, 0, 0, 0.7);
+    text-shadow: 0 0 16px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 255, 255, 0.3);
+  }
+  
+  .drop-shadow-glow {
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 20px rgba(79, 209, 197, 0.5));
+  }
+  
+  .animate-pulse-bright {
+    animation: pulse-bright 2s infinite;
+  }
+  
+  @keyframes pulse-bright {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
   }
 }
