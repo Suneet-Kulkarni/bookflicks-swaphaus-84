@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { authService } from "./authService";
 
@@ -15,6 +14,17 @@ export interface Book {
   createdAt: string;
 }
 
+export interface SwapRequest {
+  id: string;
+  bookId: string;
+  requesterId: string;
+  requesterName: string;
+  ownerId: string;
+  ownerName: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+}
+
 interface BookInput {
   title: string;
   author: string;
@@ -26,6 +36,7 @@ interface BookInput {
 
 const BOOKS_STORAGE_KEY = 'bookswap_books';
 const WISHLIST_STORAGE_KEY = 'bookswap_wishlist';
+const SWAP_REQUESTS_STORAGE_KEY = 'bookswap_swap_requests';
 
 // Sample book covers
 const sampleCovers = [
@@ -117,6 +128,11 @@ const sampleBooks: Book[] = [
 const initializeBooks = () => {
   if (!localStorage.getItem(BOOKS_STORAGE_KEY)) {
     localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify(sampleBooks));
+  }
+
+  // Initialize swap requests if not present
+  if (!localStorage.getItem(SWAP_REQUESTS_STORAGE_KEY)) {
+    localStorage.setItem(SWAP_REQUESTS_STORAGE_KEY, JSON.stringify([]));
   }
 };
 
@@ -253,5 +269,198 @@ export const bookService = {
     } catch {
       return false;
     }
+  },
+
+  requestSwap: (bookId: string): Promise<SwapRequest> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const user = authService.getCurrentUser();
+          
+          if (!user) {
+            reject(new Error('User not authenticated'));
+            return;
+          }
+          
+          const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
+          const book = books.find((b: Book) => b.id === bookId);
+          
+          if (!book) {
+            reject(new Error('Book not found'));
+            return;
+          }
+          
+          if (book.ownerId === user.id) {
+            reject(new Error('You cannot request to swap your own book'));
+            return;
+          }
+          
+          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_STORAGE_KEY) || '[]');
+          
+          // Check if a request already exists
+          const existingRequest = swapRequests.find(
+            (req: SwapRequest) => req.bookId === bookId && req.requesterId === user.id && req.status === 'pending'
+          );
+          
+          if (existingRequest) {
+            reject(new Error('You have already requested to swap this book'));
+            return;
+          }
+          
+          const newRequest: SwapRequest = {
+            id: crypto.randomUUID(),
+            bookId,
+            requesterId: user.id,
+            requesterName: user.username,
+            ownerId: book.ownerId,
+            ownerName: book.ownerName,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+          };
+          
+          localStorage.setItem(SWAP_REQUESTS_STORAGE_KEY, JSON.stringify([...swapRequests, newRequest]));
+          
+          toast("Swap request sent!");
+          resolve(newRequest);
+        } catch (error) {
+          reject(error);
+        }
+      }, 800); // Simulate network delay
+    });
+  },
+  
+  getMySwapRequests: (): Promise<{request: SwapRequest, book: Book}[]> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const user = authService.getCurrentUser();
+          
+          if (!user) {
+            reject(new Error('User not authenticated'));
+            return;
+          }
+          
+          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_STORAGE_KEY) || '[]');
+          const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
+          
+          // Get requests made by the user
+          const myRequests = swapRequests.filter(
+            (req: SwapRequest) => req.requesterId === user.id
+          );
+          
+          // Combine requests with book data
+          const myRequestsWithBooks = myRequests.map((request: SwapRequest) => {
+            const book = books.find((b: Book) => b.id === request.bookId);
+            return { request, book };
+          }).filter(item => item.book); // Filter out any requests where the book doesn't exist
+          
+          resolve(myRequestsWithBooks);
+        } catch (error) {
+          reject(error);
+        }
+      }, 500); // Simulate network delay
+    });
+  },
+  
+  getIncomingSwapRequests: (): Promise<{request: SwapRequest, book: Book}[]> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const user = authService.getCurrentUser();
+          
+          if (!user) {
+            reject(new Error('User not authenticated'));
+            return;
+          }
+          
+          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_STORAGE_KEY) || '[]');
+          const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
+          
+          // Get requests for the user's books
+          const incomingRequests = swapRequests.filter(
+            (req: SwapRequest) => req.ownerId === user.id
+          );
+          
+          // Combine requests with book data
+          const incomingRequestsWithBooks = incomingRequests.map((request: SwapRequest) => {
+            const book = books.find((b: Book) => b.id === request.bookId);
+            return { request, book };
+          }).filter(item => item.book); // Filter out any requests where the book doesn't exist
+          
+          resolve(incomingRequestsWithBooks);
+        } catch (error) {
+          reject(error);
+        }
+      }, 500); // Simulate network delay
+    });
+  },
+  
+  updateSwapRequestStatus: (requestId: string, status: 'accepted' | 'rejected'): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          const user = authService.getCurrentUser();
+          
+          if (!user) {
+            reject(new Error('User not authenticated'));
+            return;
+          }
+          
+          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_STORAGE_KEY) || '[]');
+          
+          const requestIndex = swapRequests.findIndex((req: SwapRequest) => req.id === requestId);
+          
+          if (requestIndex === -1) {
+            reject(new Error('Swap request not found'));
+            return;
+          }
+          
+          const request = swapRequests[requestIndex];
+          
+          if (request.ownerId !== user.id) {
+            reject(new Error('You can only respond to your own swap requests'));
+            return;
+          }
+          
+          // Update the request status
+          swapRequests[requestIndex] = {
+            ...request,
+            status,
+          };
+          
+          localStorage.setItem(SWAP_REQUESTS_STORAGE_KEY, JSON.stringify(swapRequests));
+          
+          toast(`Swap request ${status}!`);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }, 800); // Simulate network delay
+    });
+  },
+  
+  hasRequestedSwap: (bookId: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        try {
+          const user = authService.getCurrentUser();
+          
+          if (!user) {
+            resolve(false);
+            return;
+          }
+          
+          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_STORAGE_KEY) || '[]');
+          
+          const hasRequested = swapRequests.some(
+            (req: SwapRequest) => req.bookId === bookId && req.requesterId === user.id && req.status === 'pending'
+          );
+          
+          resolve(hasRequested);
+        } catch {
+          resolve(false);
+        }
+      }, 300); // Simulate network delay
+    });
   }
 };

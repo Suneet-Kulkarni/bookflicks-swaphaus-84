@@ -1,10 +1,11 @@
 
-import React, { useState } from "react";
-import { Heart, BookOpen } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Heart, BookOpen, ArrowRight, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Book, bookService } from "@/utils/bookService";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { authService } from "@/utils/authService";
 
 interface BookCardProps {
   book: Book;
@@ -14,8 +15,21 @@ interface BookCardProps {
 
 const BookCard: React.FC<BookCardProps> = ({ book, isWishlist = false, onRemoveFromWishlist }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSwapLoading, setIsSwapLoading] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(() => bookService.isInWishlist(book.id));
+  const [hasRequested, setHasRequested] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const currentUser = authService.getCurrentUser();
+
+  // Check if user has already requested this book
+  useEffect(() => {
+    const checkSwapRequest = async () => {
+      const requested = await bookService.hasRequestedSwap(book.id);
+      setHasRequested(requested);
+    };
+    
+    checkSwapRequest();
+  }, [book.id]);
 
   const handleToggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -44,6 +58,31 @@ const BookCard: React.FC<BookCardProps> = ({ book, isWishlist = false, onRemoveF
     }
   };
 
+  const handleRequestSwap = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!currentUser) {
+      toast("Please log in to request a swap");
+      return;
+    }
+
+    if (book.ownerId === currentUser.id) {
+      toast("You cannot request your own book");
+      return;
+    }
+
+    setIsSwapLoading(true);
+    try {
+      await bookService.requestSwap(book.id);
+      setHasRequested(true);
+    } catch (error: any) {
+      toast(error.message || "Failed to request swap");
+    } finally {
+      setIsSwapLoading(false);
+    }
+  };
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -53,6 +92,8 @@ const BookCard: React.FC<BookCardProps> = ({ book, isWishlist = false, onRemoveF
       day: 'numeric' 
     }).format(date);
   };
+
+  const isOwnBook = currentUser && book.ownerId === currentUser.id;
 
   return (
     <div 
@@ -130,12 +171,36 @@ const BookCard: React.FC<BookCardProps> = ({ book, isWishlist = false, onRemoveF
             >
               Remove
             </Button>
+          ) : isOwnBook ? (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="text-bookswap-navy/50 border-bookswap-navy/20"
+              disabled
+            >
+              Your Book
+            </Button>
+          ) : hasRequested ? (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="text-bookswap-teal border-bookswap-teal"
+              disabled
+            >
+              <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+              Requested
+            </Button>
           ) : (
             <Button 
               variant="default" 
               size="sm"
               className="bg-bookswap-teal hover:bg-bookswap-teal/80"
+              onClick={handleRequestSwap}
+              disabled={isSwapLoading}
             >
+              {isSwapLoading ? (
+                <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+              ) : null}
               Request Swap
             </Button>
           )}
