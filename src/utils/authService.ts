@@ -6,6 +6,7 @@ interface User {
   email: string;
   username: string;
   fullName: string;
+  mobileNumber: string;
 }
 
 interface AuthCredentials {
@@ -16,6 +17,7 @@ interface AuthCredentials {
 interface SignupData extends AuthCredentials {
   username: string;
   fullName: string;
+  mobileNumber: string;
 }
 
 const USERS_STORAGE_KEY = 'bookswap_users';
@@ -35,6 +37,13 @@ export const authService = {
             reject(new Error('User with this email already exists'));
             return;
           }
+
+          // Validate mobile number (basic validation)
+          const mobileRegex = /^\d{10}$/;
+          if (!mobileRegex.test(userData.mobileNumber)) {
+            reject(new Error('Please enter a valid 10-digit mobile number'));
+            return;
+          }
           
           // Create new user
           const newUser = {
@@ -42,6 +51,7 @@ export const authService = {
             email: userData.email,
             username: userData.username,
             fullName: userData.fullName,
+            mobileNumber: userData.mobileNumber,
           };
           
           // Save user to "database"

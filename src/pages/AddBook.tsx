@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -23,9 +23,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import Navbar from "@/components/Navbar";
-import { BookOpenText, BookPlus, ArrowLeft } from "lucide-react";
+import { BookOpenText, BookPlus, ArrowLeft, ImageIcon, Upload, X } from "lucide-react";
 import { bookService } from "@/utils/bookService";
-import { useEffect } from "react";
 import { authService } from "@/utils/authService";
 
 // Form validation schema
@@ -33,7 +32,7 @@ const addBookSchema = z.object({
   title: z.string().min(1, "Title is required"),
   author: z.string().min(1, "Author is required"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  coverUrl: z.string().url("Please enter a valid image URL"),
+  coverUrl: z.string().optional(), // Now optional
   condition: z.string().min(1, "Book condition is required"),
   genre: z.string().min(1, "Genre is required"),
 });
@@ -67,19 +66,11 @@ const genres = [
   "Other",
 ];
 
-// Sample cover URLs for easy selection
-const sampleCovers = [
-  "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=800",
-  "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=800",
-  "https://images.unsplash.com/photo-1629992101753-56d196c8aabb?auto=format&fit=crop&q=80&w=800",
-  "https://images.unsplash.com/photo-1592496431122-2349e0fbc666?auto=format&fit=crop&q=80&w=800",
-  "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=800",
-  "https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=800",
-];
-
 const AddBook = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedCover, setSelectedCover] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   // Check authentication
@@ -102,18 +93,46 @@ const AddBook = () => {
     },
   });
 
-  // Update coverUrl when a sample cover is selected
-  useEffect(() => {
-    if (selectedCover) {
-      form.setValue("coverUrl", selectedCover);
+  // Handle image selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedImage(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-  }, [selectedCover, form]);
+  };
+
+  // Remove selected image
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Trigger file input click
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   // Handle form submission
   const onSubmit = async (data: AddBookFormValues) => {
     setIsLoading(true);
     try {
-      await bookService.addBook(data);
+      const bookInput = {
+        ...data,
+        coverImage: selectedImage
+      };
+      await bookService.addBook(bookInput);
       navigate("/welcome");
     } catch (error) {
       console.error("Error adding book:", error);
@@ -250,43 +269,47 @@ const AddBook = () => {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="coverUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="label">Cover Image URL</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="https://example.com/book-cover.jpg" 
-                              className="input-field" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
                     <div>
-                      <FormLabel className="label mb-2 block">Sample Covers</FormLabel>
-                      <div className="grid grid-cols-3 gap-2">
-                        {sampleCovers.map((cover, index) => (
-                          <div 
-                            key={index}
-                            className={`relative aspect-[2/3] rounded-md overflow-hidden cursor-pointer border-2 transition-all ${
-                              selectedCover === cover ? "border-bookswap-teal scale-105" : "border-transparent hover:border-bookswap-teal/50"
-                            }`}
-                            onClick={() => setSelectedCover(cover)}
+                      <FormLabel className="label mb-2 block">Book Cover Image</FormLabel>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={fileInputRef}
+                        onChange={handleImageSelect}
+                        className="hidden"
+                      />
+                      
+                      {imagePreview ? (
+                        <div className="relative aspect-[2/3] rounded-md overflow-hidden border-2 border-bookswap-teal">
+                          <img 
+                            src={imagePreview} 
+                            alt="Book cover preview" 
+                            className="w-full h-full object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 rounded-full"
+                            onClick={handleRemoveImage}
                           >
-                            <img 
-                              src={cover} 
-                              alt={`Sample cover ${index + 1}`} 
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div 
+                          onClick={triggerFileInput}
+                          className="aspect-[2/3] rounded-md border-2 border-dashed border-bookswap-navy/30 flex flex-col items-center justify-center p-4 cursor-pointer hover:bg-bookswap-navy/5 transition-colors"
+                        >
+                          <ImageIcon className="h-12 w-12 text-bookswap-navy/40 mb-2" />
+                          <p className="text-bookswap-navy/60 text-center">
+                            Click to upload book cover image
+                          </p>
+                          <p className="text-bookswap-navy/40 text-sm text-center mt-1">
+                            JPEG, PNG, or GIF
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

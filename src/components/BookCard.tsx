@@ -6,6 +6,7 @@ import { Book, bookService } from "@/utils/bookService";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { authService } from "@/utils/authService";
+import { useNavigate } from "react-router-dom";
 
 interface BookCardProps {
   book: Book;
@@ -20,6 +21,7 @@ const BookCard: React.FC<BookCardProps> = ({ book, isWishlist = false, onRemoveF
   const [hasRequested, setHasRequested] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const currentUser = authService.getCurrentUser();
+  const navigate = useNavigate();
 
   // Check if user has already requested this book
   useEffect(() => {
@@ -83,6 +85,10 @@ const BookCard: React.FC<BookCardProps> = ({ book, isWishlist = false, onRemoveF
     }
   };
 
+  const handleCardClick = () => {
+    navigate(`/book/${book.id}`);
+  };
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -97,9 +103,10 @@ const BookCard: React.FC<BookCardProps> = ({ book, isWishlist = false, onRemoveF
 
   return (
     <div 
-      className="book-card flex flex-col h-full"
+      className="book-card flex flex-col h-full cursor-pointer hover:shadow-lg transition-all duration-300"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={handleCardClick}
     >
       <div className="relative overflow-hidden rounded-xl mb-4 aspect-[2/3]">
         {/* Tilt effect on hover */}
