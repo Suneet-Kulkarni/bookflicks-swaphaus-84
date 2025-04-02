@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -26,13 +25,14 @@ import Navbar from "@/components/Navbar";
 import { BookOpenText, BookPlus, ArrowLeft, ImageIcon, Upload, X } from "lucide-react";
 import { bookService } from "@/utils/bookService";
 import { authService } from "@/utils/authService";
+import { toast } from "sonner";
 
 // Form validation schema
 const addBookSchema = z.object({
   title: z.string().min(1, "Title is required"),
   author: z.string().min(1, "Author is required"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  coverUrl: z.string().optional(), // Now optional
+  coverUrl: z.string().optional(), 
   condition: z.string().min(1, "Book condition is required"),
   genre: z.string().min(1, "Genre is required"),
 });
@@ -128,20 +128,30 @@ const AddBook = () => {
   const onSubmit = async (data: AddBookFormValues) => {
     setIsLoading(true);
     try {
+      // Make sure we have all required fields
       const bookInput = {
-        ...data,
+        title: data.title,
+        author: data.author,
+        description: data.description,
+        condition: data.condition,
+        genre: data.genre,
+        coverUrl: data.coverUrl,
         coverImage: selectedImage
       };
+      
       await bookService.addBook(bookInput);
+      toast.success("Book added successfully!");
       navigate("/welcome");
     } catch (error) {
       console.error("Error adding book:", error);
+      toast.error("Failed to add book. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
+    
     <div className="min-h-screen pb-20">
       <Navbar />
       
