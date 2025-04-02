@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 
 export interface BookInput {
   title: string;
@@ -33,7 +34,6 @@ export interface SwapRequest {
 
 const WISHLIST_STORAGE_KEY = 'bookswap_wishlist';
 const SWAP_REQUESTS_KEY = 'bookswap_swap_requests';
-const BOOKS_STORAGE_KEY = 'bookswap_books_database';
 
 // Sample initial books data to ensure users always see content
 const SAMPLE_BOOKS = [
@@ -78,389 +78,91 @@ const SAMPLE_BOOKS = [
   }
 ];
 
-// Database initialization
-class BookDatabase {
-  private db: IDBDatabase | null = null;
-  private isInitialized = false;
-  private initPromise: Promise<boolean> | null = null;
-  
-  constructor() {
-    this.initPromise = this.initDatabase();
-  }
-  
-  private initDatabase(): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      // Check if IndexedDB is supported
-      if (!window.indexedDB) {
-        console.warn("Your browser doesn't support IndexedDB. Falling back to localStorage.");
-        this.migrateFromLocalStorage();
-        resolve(false);
-        return;
-      }
-      
-      const request = indexedDB.open("BookSwapDatabase", 1);
-      
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        
-        // Create object stores if they don't exist
-        if (!db.objectStoreNames.contains("books")) {
-          db.createObjectStore("books", { keyPath: "id" });
-        }
-        
-        if (!db.objectStoreNames.contains("wishlist")) {
-          db.createObjectStore("wishlist", { keyPath: "id" });
-        }
-        
-        if (!db.objectStoreNames.contains("swapRequests")) {
-          db.createObjectStore("swapRequests", { keyPath: "id" });
-        }
-      };
-      
-      request.onsuccess = (event) => {
-        this.db = (event.target as IDBOpenDBRequest).result;
-        this.isInitialized = true;
-        
-        // Seed database with initial data and/or migrate from localStorage
-        this.seedDatabase().then(() => {
-          resolve(true);
-        });
-      };
-      
-      request.onerror = (event) => {
-        console.error("IndexedDB error:", (event.target as IDBOpenDBRequest).error);
-        this.migrateFromLocalStorage();
-        resolve(false);
-      };
-    });
-  }
-  
-  private async seedDatabase(): Promise<void> {
-    // First check if we have any books
-    const existingBooks = await this.getAllBooks();
-    
-    // If no books exist, add sample books
-    if (existingBooks.length === 0) {
-      // Check localStorage for existing books first
-      const localStorageBooks = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
-      
-      if (localStorageBooks.length > 0) {
-        // Migrate existing localStorage data
-        await Promise.all(localStorageBooks.map((book: Book) => this.addBook(book)));
+// Helper function to convert File to base64 string
+function processBookCoverImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
       } else {
-        // Add sample books if no localStorage data
-        await Promise.all(SAMPLE_BOOKS.map((book) => this.addBook(book)));
+        reject(new Error('Failed to process image'));
       }
-      
-      // Migrate wishlist and swap requests
-      this.migrateFromLocalStorage();
-    }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Initialize Supabase with sample books if needed
+async function initializeSupabaseBooks() {
+  const { data: existingBooks, error } = await supabase
+    .from('books')
+    .select('*');
+
+  if (error) {
+    console.error('Error checking for existing books:', error);
+    return;
   }
-  
-  private migrateFromLocalStorage(): void {
-    // Migrate books
-    const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
-    books.forEach((book: Book) => this.addBook(book));
-    
-    // Migrate wishlist
-    const wishlistIds = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
-    wishlistIds.forEach((id: string) => this.addToWishlist(id));
-    
-    // Migrate swap requests
-    const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
-    swapRequests.forEach((request: SwapRequest) => this.addSwapRequest(request));
-  }
-  
-  async getAllBooks(): Promise<Book[]> {
-    await this.initPromise;
-    
-    if (!this.db) {
-      // Fallback to localStorage
-      return JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
+
+  // If there are no books, add sample books
+  if (existingBooks.length === 0) {
+    for (const book of SAMPLE_BOOKS) {
+      await supabase.from('books').insert([{
+        title: book.title,
+        author: book.author, 
+        description: book.description,
+        cover_url: book.coverUrl,
+        condition: book.condition,
+        genre: book.genre,
+        owner_id: book.ownerId,
+        owner_name: book.ownerName,
+        owner_mobile_number: book.ownerMobileNumber,
+        created_at: book.createdAt
+      }]);
     }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(["books"], "readonly");
-      const objectStore = transaction.objectStore("books");
-      const request = objectStore.getAll();
-      
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-        console.error("Error getting books:", request.error);
-      };
-    });
-  }
-  
-  async getBookById(id: string): Promise<Book | null> {
-    await this.initPromise;
-    
-    if (!this.db) {
-      // Fallback to localStorage
-      const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
-      return books.find((book: Book) => book.id === id) || null;
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(["books"], "readonly");
-      const objectStore = transaction.objectStore("books");
-      const request = objectStore.get(id);
-      
-      request.onsuccess = () => {
-        const book = request.result;
-        if (book) {
-          // Try to get owner's mobile number from localStorage if not in book
-          if (!book.ownerMobileNumber) {
-            const users = JSON.parse(localStorage.getItem('bookswap_users') || '[]');
-            const bookOwner = users.find((user: any) => user.id === book.ownerId);
-            if (bookOwner && bookOwner.mobileNumber) {
-              book.ownerMobileNumber = bookOwner.mobileNumber;
-            }
-          }
-        }
-        resolve(request.result || null);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-        console.error("Error getting book:", request.error);
-      };
-    });
-  }
-  
-  async addBook(book: Book): Promise<Book> {
-    await this.initPromise;
-    
-    // Always add to localStorage as backup
-    const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
-    const bookExists = books.some((b: Book) => b.id === book.id);
-    
-    if (!bookExists) {
-      localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify([...books, book]));
-    }
-    
-    if (!this.db) {
-      return book;
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(["books"], "readwrite");
-      const objectStore = transaction.objectStore("books");
-      const request = objectStore.put(book);
-      
-      request.onsuccess = () => {
-        resolve(book);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-        console.error("Error adding book:", request.error);
-      };
-    });
-  }
-  
-  async getAllWishlist(): Promise<string[]> {
-    await this.initPromise;
-    
-    if (!this.db) {
-      return JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(["wishlist"], "readonly");
-      const objectStore = transaction.objectStore("wishlist");
-      const request = objectStore.getAll();
-      
-      request.onsuccess = () => {
-        resolve(request.result.map(item => item.id));
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-        console.error("Error getting wishlist:", request.error);
-      };
-    });
-  }
-  
-  async addToWishlist(bookId: string): Promise<void> {
-    await this.initPromise;
-    
-    // Always add to localStorage as backup
-    const wishlist = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
-    if (!wishlist.includes(bookId)) {
-      localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify([...wishlist, bookId]));
-    }
-    
-    if (!this.db) {
-      return;
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(["wishlist"], "readwrite");
-      const objectStore = transaction.objectStore("wishlist");
-      const request = objectStore.put({ id: bookId });
-      
-      request.onsuccess = () => {
-        resolve();
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-        console.error("Error adding to wishlist:", request.error);
-      };
-    });
-  }
-  
-  async removeFromWishlist(bookId: string): Promise<void> {
-    await this.initPromise;
-    
-    // Update localStorage backup
-    let wishlist = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
-    wishlist = wishlist.filter((id: string) => id !== bookId);
-    localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlist));
-    
-    if (!this.db) {
-      return;
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(["wishlist"], "readwrite");
-      const objectStore = transaction.objectStore("wishlist");
-      const request = objectStore.delete(bookId);
-      
-      request.onsuccess = () => {
-        resolve();
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-        console.error("Error removing from wishlist:", request.error);
-      };
-    });
-  }
-  
-  async addSwapRequest(request: SwapRequest): Promise<void> {
-    await this.initPromise;
-    
-    // Always update localStorage as backup
-    let swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
-    const exists = swapRequests.some((r: SwapRequest) => r.id === request.id);
-    
-    if (!exists) {
-      swapRequests.push(request);
-      localStorage.setItem(SWAP_REQUESTS_KEY, JSON.stringify(swapRequests));
-    }
-    
-    if (!this.db) {
-      return;
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(["swapRequests"], "readwrite");
-      const objectStore = transaction.objectStore("swapRequests");
-      const dbRequest = objectStore.put(request);
-      
-      dbRequest.onsuccess = () => {
-        resolve();
-      };
-      
-      dbRequest.onerror = () => {
-        reject(dbRequest.error);
-        console.error("Error adding swap request:", dbRequest.error);
-      };
-    });
-  }
-  
-  async getAllSwapRequests(): Promise<SwapRequest[]> {
-    await this.initPromise;
-    
-    if (!this.db) {
-      return JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(["swapRequests"], "readonly");
-      const objectStore = transaction.objectStore("swapRequests");
-      const request = objectStore.getAll();
-      
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-        console.error("Error getting swap requests:", request.error);
-      };
-    });
-  }
-  
-  async updateSwapRequestStatus(requestId: string, status: 'accepted' | 'rejected'): Promise<void> {
-    await this.initPromise;
-    
-    // Update localStorage backup
-    let swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
-    swapRequests = swapRequests.map((req: SwapRequest) => 
-      req.id === requestId ? { ...req, status } : req
-    );
-    localStorage.setItem(SWAP_REQUESTS_KEY, JSON.stringify(swapRequests));
-    
-    if (!this.db) {
-      return;
-    }
-    
-    // First get the existing request to update it
-    return new Promise(async (resolve, reject) => {
-      try {
-        const allRequests = await this.getAllSwapRequests();
-        const request = allRequests.find(req => req.id === requestId);
-        
-        if (!request) {
-          reject(new Error("Swap request not found"));
-          return;
-        }
-        
-        const updatedRequest = { ...request, status };
-        
-        const transaction = this.db!.transaction(["swapRequests"], "readwrite");
-        const objectStore = transaction.objectStore("swapRequests");
-        const dbRequest = objectStore.put(updatedRequest);
-        
-        dbRequest.onsuccess = () => {
-          resolve();
-        };
-        
-        dbRequest.onerror = () => {
-          reject(dbRequest.error);
-          console.error("Error updating swap request:", dbRequest.error);
-        };
-      } catch (error) {
-        reject(error);
-      }
-    });
+    console.log('Sample books initialized in Supabase');
   }
 }
 
-// Create single instance of database
-const database = new BookDatabase();
+// Call initialization on module load
+initializeSupabaseBooks().catch(console.error);
 
 // Main service export
 export const bookService = {
   getBooks: async (): Promise<Book[]> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
-          const books = await database.getAllBooks();
+          const { data, error } = await supabase
+            .from('books')
+            .select('*');
+          
+          if (error) {
+            throw error;
+          }
+          
+          // Transform from Supabase format to our Book interface
+          const books: Book[] = data.map(book => ({
+            id: book.id,
+            title: book.title,
+            author: book.author,
+            description: book.description || '',
+            coverUrl: book.cover_url || '',
+            condition: book.condition,
+            genre: book.genre,
+            ownerId: book.owner_id || 'system',
+            ownerName: book.owner_name || 'Unknown',
+            createdAt: book.created_at,
+            ownerMobileNumber: book.owner_mobile_number,
+          }));
+          
           resolve(books);
         } catch (error) {
           console.error("Error fetching books:", error);
-          // Fallback to localStorage
-          const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
-          resolve(books);
+          reject(error);
         }
-      }, 500);
+      }, 500); // Keep timeout for consistent UX
     });
   },
 
@@ -468,7 +170,37 @@ export const bookService = {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
-          const book = await database.getBookById(id);
+          const { data, error } = await supabase
+            .from('books')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (error) {
+            if (error.code === 'PGRST116') { // Not found
+              return resolve(null);
+            }
+            throw error;
+          }
+          
+          if (!data) {
+            return resolve(null);
+          }
+          
+          const book: Book = {
+            id: data.id,
+            title: data.title,
+            author: data.author,
+            description: data.description || '',
+            coverUrl: data.cover_url || '',
+            condition: data.condition,
+            genre: data.genre,
+            ownerId: data.owner_id || 'system',
+            ownerName: data.owner_name || 'Unknown',
+            createdAt: data.created_at,
+            ownerMobileNumber: data.owner_mobile_number,
+          };
+          
           resolve(book);
         } catch (error) {
           console.error("Error fetching book:", error);
@@ -500,21 +232,44 @@ export const bookService = {
             return;
           }
 
+          const { data, error } = await supabase
+            .from('books')
+            .insert([{
+              title: bookData.title,
+              author: bookData.author,
+              description: bookData.description,
+              cover_url: coverUrl,
+              condition: bookData.condition,
+              genre: bookData.genre,
+              owner_id: currentUser.id,
+              owner_name: currentUser.fullName || currentUser.username,
+              owner_mobile_number: currentUser.mobileNumber
+            }])
+            .select()
+            .single();
+
+          if (error) {
+            throw error;
+          }
+          
+          if (!data) {
+            throw new Error('Failed to add book');
+          }
+          
           const newBook: Book = {
-            id: crypto.randomUUID(),
-            title: bookData.title,
-            author: bookData.author,
-            description: bookData.description,
-            coverUrl: coverUrl,
-            condition: bookData.condition,
-            genre: bookData.genre,
-            ownerId: currentUser.id,
-            ownerName: currentUser.fullName || currentUser.username,
-            ownerMobileNumber: currentUser.mobileNumber,
-            createdAt: new Date().toISOString(),
+            id: data.id,
+            title: data.title,
+            author: data.author,
+            description: data.description || '',
+            coverUrl: data.cover_url || '',
+            condition: data.condition,
+            genre: data.genre,
+            ownerId: data.owner_id || currentUser.id,
+            ownerName: data.owner_name || currentUser.fullName || currentUser.username,
+            ownerMobileNumber: data.owner_mobile_number || currentUser.mobileNumber,
+            createdAt: data.created_at,
           };
 
-          await database.addBook(newBook);
           resolve(newBook);
         } catch (error) {
           reject(error);
@@ -527,7 +282,12 @@ export const bookService = {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
-          await database.addToWishlist(bookId);
+          // For now, we'll keep wishlist in localStorage until we create a wishlist table
+          let wishlistIds = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
+          if (!wishlistIds.includes(bookId)) {
+            wishlistIds.push(bookId);
+            localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlistIds));
+          }
           resolve();
         } catch (error) {
           console.error("Error adding to wishlist:", error);
@@ -541,7 +301,9 @@ export const bookService = {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
-          await database.removeFromWishlist(bookId);
+          let wishlistIds = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
+          wishlistIds = wishlistIds.filter((id: string) => id !== bookId);
+          localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlistIds));
           resolve();
         } catch (error) {
           console.error("Error removing from wishlist:", error);
@@ -555,17 +317,39 @@ export const bookService = {
     return new Promise(async (resolve) => {
       setTimeout(async () => {
         try {
-          const wishlistIds = await database.getAllWishlist();
-          const books = await database.getAllBooks();
-          const wishlistBooks = books.filter((book: Book) => wishlistIds.includes(book.id));
-          resolve(wishlistBooks);
+          const wishlistIds = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
+          
+          if (wishlistIds.length === 0) {
+            return resolve([]);
+          }
+          
+          const { data, error } = await supabase
+            .from('books')
+            .select('*')
+            .in('id', wishlistIds);
+            
+          if (error) {
+            throw error;
+          }
+          
+          const books: Book[] = data.map(book => ({
+            id: book.id,
+            title: book.title,
+            author: book.author,
+            description: book.description || '',
+            coverUrl: book.cover_url || '',
+            condition: book.condition,
+            genre: book.genre,
+            ownerId: book.owner_id || 'system',
+            ownerName: book.owner_name || 'Unknown',
+            createdAt: book.created_at,
+            ownerMobileNumber: book.owner_mobile_number,
+          }));
+          
+          resolve(books);
         } catch (error) {
           console.error("Error getting wishlist books:", error);
-          // Fallback to localStorage
-          const wishlistIds = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
-          const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
-          const wishlistBooks = books.filter((book: Book) => wishlistIds.includes(book.id));
-          resolve(wishlistBooks);
+          resolve([]);
         }
       }, 300);
     });
@@ -573,13 +357,11 @@ export const bookService = {
 
   isInWishlist: async (bookId: string): Promise<boolean> => {
     try {
-      const wishlist = await database.getAllWishlist();
+      const wishlist = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
       return wishlist.includes(bookId);
     } catch (error) {
       console.error("Error checking wishlist:", error);
-      // Fallback to localStorage
-      const wishlist = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || '[]');
-      return wishlist.includes(bookId);
+      return false;
     }
   },
 
@@ -593,8 +375,8 @@ export const bookService = {
             return;
           }
 
-          // Get all swap requests to check for duplicates
-          const swapRequests = await database.getAllSwapRequests();
+          // For now, we'll keep swap requests in localStorage
+          let swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
           
           // Check if the request already exists
           const existingRequest = swapRequests.find(
@@ -614,7 +396,8 @@ export const bookService = {
             createdAt: new Date().toISOString()
           } as SwapRequest;
 
-          await database.addSwapRequest(newRequest);
+          swapRequests.push(newRequest);
+          localStorage.setItem(SWAP_REQUESTS_KEY, JSON.stringify(swapRequests));
           resolve();
         } catch (error) {
           reject(error);
@@ -628,16 +411,12 @@ export const bookService = {
       setTimeout(async () => {
         try {
           const currentUser = JSON.parse(localStorage.getItem('bookswap_current_user') || '{}');
-          const swapRequests = await database.getAllSwapRequests();
+          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
           const userRequests = swapRequests.filter((req: SwapRequest) => req.userId === currentUser.id);
           resolve(userRequests);
         } catch (error) {
           console.error("Error getting swap requests:", error);
-          // Fallback to localStorage
-          const currentUser = JSON.parse(localStorage.getItem('bookswap_current_user') || '{}');
-          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
-          const userRequests = swapRequests.filter((req: SwapRequest) => req.userId === currentUser.id);
-          resolve(userRequests);
+          resolve([]);
         }
       }, 500);
     });
@@ -648,16 +427,12 @@ export const bookService = {
       setTimeout(async () => {
         try {
           const currentUser = JSON.parse(localStorage.getItem('bookswap_current_user') || '{}');
-          const swapRequests = await database.getAllSwapRequests();
+          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
           const userRequests = swapRequests.filter((req: SwapRequest) => req.userId === currentUser.id);
           resolve(userRequests);
         } catch (error) {
           console.error("Error getting my swap requests:", error);
-          // Fallback to localStorage
-          const currentUser = JSON.parse(localStorage.getItem('bookswap_current_user') || '{}');
-          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
-          const userRequests = swapRequests.filter((req: SwapRequest) => req.userId === currentUser.id);
-          resolve(userRequests);
+          resolve([]);
         }
       }, 500);
     });
@@ -673,50 +448,55 @@ export const bookService = {
             return;
           }
           
-          // Get all books owned by current user
-          const books = await database.getAllBooks();
-          const myBooks = books.filter((book: Book) => book.ownerId === currentUser.id);
-          const myBookIds = myBooks.map((book: Book) => book.id);
+          // Get books from Supabase
+          const { data: books, error } = await supabase
+            .from('books')
+            .select('*')
+            .eq('owner_id', currentUser.id);
           
-          // Get all swap requests for those books
-          const swapRequests = await database.getAllSwapRequests();
-          const incomingRequests = swapRequests.filter(
-            (req: SwapRequest) => myBookIds.includes(req.bookId)
-          );
-          
-          // Combine with book data
-          const requestsWithBooks = await Promise.all(
-            incomingRequests.map(async (request: SwapRequest) => {
-              const book = books.find((b: Book) => b.id === request.bookId);
-              return { request, book };
-            })
-          );
-          
-          resolve(requestsWithBooks);
-        } catch (error) {
-          console.error("Error getting incoming swap requests:", error);
-          // Fallback to localStorage
-          const currentUser = JSON.parse(localStorage.getItem('bookswap_current_user') || '{}');
-          if (!currentUser.id) {
-            resolve([]);
-            return;
+          if (error) {
+            throw error;
           }
           
-          const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
-          const myBooks = books.filter((book: Book) => book.ownerId === currentUser.id);
-          const myBookIds = myBooks.map((book: Book) => book.id);
+          const myBookIds = books.map(book => book.id);
           
+          // Get swap requests from localStorage
           const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
           const incomingRequests = swapRequests.filter(
             (req: SwapRequest) => myBookIds.includes(req.bookId)
           );
           
+          // Map books to requests
+          const booksMap = books.reduce((map: Record<string, any>, book: any) => {
+            map[book.id] = book;
+            return map;
+          }, {});
+          
+          // Combine with book data
           const requestsWithBooks = incomingRequests.map((request: SwapRequest) => {
-            const book = books.find((b: Book) => b.id === request.bookId);
+            const bookData = booksMap[request.bookId];
+            
+            const book: Book = bookData ? {
+              id: bookData.id,
+              title: bookData.title,
+              author: bookData.author,
+              description: bookData.description || '',
+              coverUrl: bookData.cover_url || '',
+              condition: bookData.condition,
+              genre: bookData.genre,
+              ownerId: bookData.owner_id || 'system',
+              ownerName: bookData.owner_name || 'Unknown',
+              createdAt: bookData.created_at,
+              ownerMobileNumber: bookData.owner_mobile_number,
+            } : null;
+            
             return { request, book };
           });
           
-          resolve(requestsWithBooks);
+          resolve(requestsWithBooks.filter(item => item.book));
+        } catch (error) {
+          console.error("Error getting incoming swap requests:", error);
+          resolve([]);
         }
       }, 500);
     });
@@ -726,7 +506,12 @@ export const bookService = {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
-          await database.updateSwapRequestStatus(requestId, status);
+          // For now, we'll keep swap requests in localStorage
+          let swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
+          swapRequests = swapRequests.map((req: SwapRequest) => 
+            req.id === requestId ? { ...req, status } : req
+          );
+          localStorage.setItem(SWAP_REQUESTS_KEY, JSON.stringify(swapRequests));
           resolve();
         } catch (error) {
           console.error("Error updating swap request status:", error);
@@ -746,7 +531,7 @@ export const bookService = {
             return;
           }
           
-          const swapRequests = await database.getAllSwapRequests();
+          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
           const requested = swapRequests.some(
             (req: SwapRequest) => req.bookId === bookId && req.userId === currentUser.id
           );
@@ -754,35 +539,9 @@ export const bookService = {
           resolve(requested);
         } catch (error) {
           console.error("Error checking if swap requested:", error);
-          // Fallback to localStorage
-          const currentUser = JSON.parse(localStorage.getItem('bookswap_current_user') || '{}');
-          if (!currentUser.id) {
-            resolve(false);
-            return;
-          }
-          const swapRequests = JSON.parse(localStorage.getItem(SWAP_REQUESTS_KEY) || '[]');
-          const requested = swapRequests.some(
-            (req: any) => req.bookId === bookId && req.userId === currentUser.id
-          );
-          resolve(requested);
+          resolve(false);
         }
       }, 300);
     });
   },
 };
-
-// Helper function to convert File to base64 string (for local storage)
-function processBookCoverImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to process image'));
-      }
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
-}
