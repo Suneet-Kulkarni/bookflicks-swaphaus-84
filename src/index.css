@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 @tailwind base;
@@ -93,7 +94,9 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    background: linear-gradient(to right, #8A4FFF, #36D6FF);
+    background-image: 
+      radial-gradient(at 80% 0%, hsla(189, 100%, 96%, 0.3) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsla(355, 100%, 93%, 0.3) 0px, transparent 50%);
     background-attachment: fixed;
   }
 
@@ -138,100 +141,5 @@
 
   .label {
     @apply text-bookswap-navy font-medium mb-1 block;
-  }
-  
-  /* New animated components */
-  .shimmer-text {
-    @apply bg-gradient-to-r from-white via-white/70 to-white bg-[length:200%_100%] animate-text-shimmer;
-  }
-  
-  .floating-element {
-    @apply animate-float;
-  }
-  
-  .bouncing-element {
-    @apply animate-bounce-gentle;
-  }
-  
-  .gradient-button {
-    @apply relative overflow-hidden bg-gradient-to-r from-bookswap-coral to-bookswap-amber text-white rounded-full px-8 py-3 font-medium transform transition-all hover:-translate-y-1 hover:shadow-lg;
-  }
-  
-  .gradient-button::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-bookswap-amber to-bookswap-coral opacity-0 transition-opacity duration-300;
-  }
-  
-  .gradient-button:hover::before {
-    @apply opacity-100;
-  }
-  
-  .gradient-button span {
-    @apply relative z-10;
-  }
-  
-  .animated-gradient {
-    background-size: 200% 200%;
-    animation: gradient-shift 5s ease infinite;
-  }
-  
-  .motto-container {
-    @apply relative py-2 px-4 rounded-xl;
-    background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, transparent 70%);
-  }
-  
-  .motto-highlight {
-    @apply relative inline-block;
-  }
-  
-  .motto-highlight::after {
-    content: '';
-    @apply absolute bottom-0 left-0 w-full h-1 bg-bookswap-coral rounded-full;
-    animation: expand-line 1.5s ease-out forwards;
-    transform-origin: left;
-  }
-  
-  @keyframes expand-line {
-    from { transform: scaleX(0); }
-    to { transform: scaleX(1); }
-  }
-  
-  @keyframes gradient-shift {
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
-  }
-}
-
-@layer utilities {
-  .text-shadow-sm {
-    text-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
-  }
-  
-  .text-shadow-md {
-    text-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
-  }
-  
-  .text-shadow-lg {
-    text-shadow: 0 0 16px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 255, 255, 0.3);
-  }
-  
-  .drop-shadow-glow {
-    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 20px rgba(79, 209, 197, 0.5));
-  }
-  
-  .animate-pulse-bright {
-    animation: pulse-bright 2s infinite;
-  }
-  
-  @keyframes pulse-bright {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
   }
 }
