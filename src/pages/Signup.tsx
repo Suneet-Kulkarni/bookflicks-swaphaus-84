@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -14,7 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { BookOpenText, ArrowLeft, MailIcon, UserIcon, KeyIcon, UserCircle } from "lucide-react";
+import { BookOpenText, ArrowLeft, MailIcon, UserIcon, KeyIcon, UserCircle, PhoneIcon } from "lucide-react";
 import { authService } from "@/utils/authService";
 import { toast } from "sonner";
 
@@ -22,6 +21,7 @@ import { toast } from "sonner";
 const signupSchema = z.object({
   fullName: z.string().min(3, "Full name must be at least 3 characters"),
   username: z.string().min(3, "Username must be at least 3 characters"),
+  mobileNumber: z.string().regex(/^\d{10}$/, "Mobile number must be 10 digits"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
@@ -42,6 +42,7 @@ const Signup = () => {
     defaultValues: {
       fullName: "",
       username: "",
+      mobileNumber: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -121,6 +122,28 @@ const Signup = () => {
                       <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-bookswap-navy/50" />
                       <Input
                         placeholder="bookworm42"
+                        className="input-field pl-10"
+                        {...field}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="mobileNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="label">Mobile Number</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <PhoneIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-bookswap-navy/50" />
+                      <Input
+                        type="tel"
+                        placeholder="1234567890"
                         className="input-field pl-10"
                         {...field}
                       />

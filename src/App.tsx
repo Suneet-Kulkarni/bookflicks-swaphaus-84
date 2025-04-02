@@ -12,6 +12,7 @@ import Welcome from "./pages/Welcome";
 import AddBook from "./pages/AddBook";
 import Wishlist from "./pages/Wishlist";
 import SwapRequests from "./pages/SwapRequests";
+import BookDetail from "./pages/BookDetail";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/add-book" element={<AddBook />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/swap-requests" element={<SwapRequests />} />
+          <Route path="/book/:id" element={<BookDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
