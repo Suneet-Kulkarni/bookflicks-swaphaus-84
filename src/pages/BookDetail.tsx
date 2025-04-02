@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Book, bookService } from "@/utils/bookService";
@@ -15,7 +14,6 @@ const BookDetail = () => {
   const [loading, setLoading] = useState(true);
   const [isSwapLoading, setIsSwapLoading] = useState(false);
   const [hasRequested, setHasRequested] = useState(false);
-  const [ownerMobile, setOwnerMobile] = useState<string | null>(null);
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
 
@@ -31,15 +29,6 @@ const BookDetail = () => {
         // Check if user has already requested this book
         const requested = await bookService.hasRequestedSwap(id);
         setHasRequested(requested);
-        
-        // Get book owner details
-        if (bookData) {
-          const users = JSON.parse(localStorage.getItem('bookswap_users') || '[]');
-          const bookOwner = users.find((user: any) => user.id === bookData.ownerId);
-          if (bookOwner) {
-            setOwnerMobile(bookOwner.mobileNumber);
-          }
-        }
       } catch (error) {
         console.error("Error fetching book:", error);
         toast("Could not load book details");
@@ -181,12 +170,10 @@ const BookDetail = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-bookswap-navy font-medium">{book.ownerName}</p>
-                    {isOwnBook || hasRequested ? (
-                      <div className="flex items-center mt-2">
-                        <Phone className="h-4 w-4 mr-2 text-bookswap-teal" />
-                        <span className="text-bookswap-navy">{ownerMobile}</span>
-                      </div>
-                    ) : null}
+                    <div className="flex items-center mt-2">
+                      <Phone className="h-4 w-4 mr-2 text-bookswap-teal" />
+                      <span className="text-bookswap-navy">{book.ownerMobileNumber || "Not available"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -209,9 +196,6 @@ const BookDetail = () => {
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                     Swap Requested
                   </Button>
-                  <p className="text-sm text-center text-bookswap-navy/70">
-                    Contact the owner at: <span className="font-medium">{ownerMobile}</span>
-                  </p>
                 </div>
               ) : (
                 <Button 

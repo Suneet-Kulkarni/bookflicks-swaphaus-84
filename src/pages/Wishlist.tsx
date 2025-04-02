@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Book, bookService } from "@/utils/bookService";
@@ -94,7 +93,7 @@ const Wishlist = () => {
                   <BookCard 
                     book={book} 
                     onRemoveFromWishlist={() => handleRemoveFromWishlist(book.id)}
-                    isInWishlist={true}
+                    isWishlist={true}
                   />
                 </div>
               ))}

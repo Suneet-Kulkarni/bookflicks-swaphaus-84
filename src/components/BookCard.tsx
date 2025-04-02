@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Heart, BookOpen, ArrowRight, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";

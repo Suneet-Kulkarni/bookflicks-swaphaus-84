@@ -1,4 +1,3 @@
-
 export interface BookInput {
   title: string;
   author: string;
@@ -64,6 +63,16 @@ export const bookService = {
         try {
           const books = JSON.parse(localStorage.getItem(BOOKS_STORAGE_KEY) || '[]');
           const book = books.find((book: Book) => book.id === id);
+          
+          // Make sure mobile number is included
+          if (book) {
+            const users = JSON.parse(localStorage.getItem('bookswap_users') || '[]');
+            const bookOwner = users.find((user: any) => user.id === book.ownerId);
+            if (bookOwner && bookOwner.mobileNumber) {
+              book.ownerMobileNumber = bookOwner.mobileNumber;
+            }
+          }
+          
           resolve(book || null);
         } catch (error) {
           reject(error);
