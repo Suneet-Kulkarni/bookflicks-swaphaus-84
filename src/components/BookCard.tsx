@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Heart, BookOpen, ArrowRight, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,11 +17,23 @@ interface BookCardProps {
 const BookCard: React.FC<BookCardProps> = ({ book, isWishlist = false, onRemoveFromWishlist }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSwapLoading, setIsSwapLoading] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(() => bookService.isInWishlist(book.id));
+  const [isWishlisted, setIsWishlisted] = useState(false);
   const [hasRequested, setHasRequested] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const currentUser = authService.getCurrentUser();
   const navigate = useNavigate();
+
+  // Check wishlist status
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (!isWishlist) {
+        const inWishlist = await bookService.isInWishlist(book.id);
+        setIsWishlisted(inWishlist);
+      }
+    };
+    
+    checkWishlistStatus();
+  }, [book.id, isWishlist]);
 
   // Check if user has already requested this book
   useEffect(() => {
