@@ -2,231 +2,134 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  PanelRight, 
-  Heart, 
-  BookPlus, 
-  RefreshCcw,
-  Menu, 
-  X, 
-  LogOut,
-  BookOpenText,
-  User
-} from "lucide-react";
+import { BookOpenText, LogOut, Menu, X } from "lucide-react";
 import { authService } from "@/utils/authService";
 import { cn } from "@/lib/utils";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [user, setUser] = useState(authService.getCurrentUser());
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Check if user is logged in
-  useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-  }, [location.pathname]);
-  
+  const isAuthenticated = authService.isAuthenticated();
+  const user = authService.getCurrentUser();
+
   // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
-    
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location]);
+
   const handleLogout = async () => {
     await authService.logout();
-    setUser(null);
-    navigate("/");
+    navigate("/login");
   };
-  
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-  
-  const closeMenu = () => {
-    setIsMenuOpen(false);
-  };
-  
-  // Render mobile menu
-  const renderMobileMenu = () => (
-    <div 
+
+  return (
+    <nav
       className={cn(
-        "fixed inset-0 bg-white z-50 transition-transform duration-300 transform lg:hidden",
-        isMenuOpen ? "translate-x-0" : "translate-x-full"
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 lg:px-12 py-4", 
+        isScrolled 
+          ? "bg-white/70 backdrop-blur-lg shadow-sm" 
+          : "bg-transparent"
       )}
     >
-      <div className="flex justify-between items-center p-4 border-b">
-        <Link to="/" className="flex items-center" onClick={closeMenu}>
-          <BookOpenText className="w-8 h-8 text-bookswap-teal mr-2" />
-          <span className="font-bold text-xl text-bookswap-navy">BookSwap</span>
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2">
+          <BookOpenText className="h-8 w-8 text-bookswap-teal" />
+          <span className="font-serif text-2xl font-bold text-bookswap-navy">
+            Book<span className="text-bookswap-coral">Swap</span>
+          </span>
         </Link>
-        <Button variant="ghost" size="icon" onClick={toggleMenu}>
-          <X className="h-6 w-6" />
-        </Button>
-      </div>
-      
-      <nav className="p-4">
-        <ul className="space-y-4">
-          {user ? (
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-8">
+          <Link to="/" className="nav-link">Home</Link>
+          {isAuthenticated ? (
             <>
-              <li>
-                <Link
-                  to="/welcome"
-                  className="flex items-center p-2 rounded-lg hover:bg-gray-100"
-                  onClick={closeMenu}
+              <Link to="/welcome" className="nav-link">Books</Link>
+              <Link to="/wishlist" className="nav-link">Wishlist</Link>
+              <Link to="/add-book" className="nav-link">Add Book</Link>
+              <div className="flex items-center gap-4">
+                <span className="text-bookswap-navy font-medium">
+                  Hi, {user?.username}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleLogout}
+                  className="text-bookswap-coral border-bookswap-coral hover:bg-bookswap-coral/10"
                 >
-                  <BookOpenText className="mr-3 h-5 w-5 text-bookswap-navy" />
-                  <span>Browse Books</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/add-book"
-                  className="flex items-center p-2 rounded-lg hover:bg-gray-100"
-                  onClick={closeMenu}
-                >
-                  <BookPlus className="mr-3 h-5 w-5 text-bookswap-navy" />
-                  <span>Add Book</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/wishlist"
-                  className="flex items-center p-2 rounded-lg hover:bg-gray-100"
-                  onClick={closeMenu}
-                >
-                  <Heart className="mr-3 h-5 w-5 text-bookswap-navy" />
-                  <span>Wishlist</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/swap-requests"
-                  className="flex items-center p-2 rounded-lg hover:bg-gray-100"
-                  onClick={closeMenu}
-                >
-                  <RefreshCcw className="mr-3 h-5 w-5 text-bookswap-navy" />
-                  <span>Swap Requests</span>
-                </Link>
-              </li>
-              <li className="pt-4 border-t">
-                <div className="flex items-center p-2 text-bookswap-navy">
-                  <User className="mr-3 h-5 w-5" />
-                  <span className="font-medium">{user.username}</span>
-                </div>
-              </li>
-              <li>
-                <Button
-                  variant="ghost"
-                  className="flex w-full justify-start text-red-500 hover:text-red-700 hover:bg-red-50 p-2"
-                  onClick={() => {
-                    handleLogout();
-                    closeMenu();
-                  }}
-                >
-                  <LogOut className="mr-3 h-5 w-5" />
-                  <span>Log Out</span>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
                 </Button>
-              </li>
+              </div>
             </>
           ) : (
             <>
-              <li>
-                <Link to="/login" className="block p-2 hover:bg-gray-100 rounded-lg" onClick={closeMenu}>
-                  Login
-                </Link>
-              </li>
-              <li>
-                <Link to="/signup" className="block p-2 hover:bg-gray-100 rounded-lg" onClick={closeMenu}>
-                  Sign Up
-                </Link>
-              </li>
+              <Link to="/login" className="button-outline py-2 px-4">Login</Link>
+              <Link to="/signup" className="button-primary py-2 px-4">
+                Sign Up
+              </Link>
             </>
           )}
-        </ul>
-      </nav>
-    </div>
-  );
-  
-  return (
-    <>
-      <header 
-        className={cn(
-          "fixed top-0 left-0 right-0 z-40 transition-all duration-300",
-          isScrolled 
-            ? "bg-white/90 backdrop-blur-md shadow-sm py-2" 
-            : "bg-transparent py-4"
-        )}
-      >
-        <div className="container mx-auto px-4 flex justify-between items-center">
-          <Link to="/" className="flex items-center">
-            <BookOpenText className="w-8 h-8 text-bookswap-teal mr-2" />
-            <span className="font-bold text-xl text-bookswap-navy">BookSwap</span>
-          </Link>
-          
-          {/* Desktop navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
-            {user ? (
+        </div>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          className="md:hidden text-bookswap-navy"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+        >
+          {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {isMenuOpen && (
+        <div className="md:hidden fixed inset-0 top-16 z-40 bg-white/95 backdrop-blur-lg animate-fade-in">
+          <div className="flex flex-col items-center justify-center h-full gap-6 text-xl">
+            <Link to="/" className="nav-link font-medium">Home</Link>
+            {isAuthenticated ? (
               <>
-                <Link to="/welcome">
-                  <Button variant="ghost" className="text-bookswap-navy">
-                    Browse Books
-                  </Button>
-                </Link>
-                <Link to="/add-book">
-                  <Button variant="ghost" className="text-bookswap-navy">
-                    <BookPlus className="h-4 w-4 mr-2" />
-                    Add Book
-                  </Button>
-                </Link>
-                <Link to="/wishlist">
-                  <Button variant="ghost" className="text-bookswap-navy">
-                    <Heart className="h-4 w-4 mr-2" />
-                    Wishlist
-                  </Button>
-                </Link>
-                <Link to="/swap-requests">
-                  <Button variant="ghost" className="text-bookswap-navy">
-                    <RefreshCcw className="h-4 w-4 mr-2" />
-                    Swap Requests
-                  </Button>
-                </Link>
-                <div className="ml-4 border-l pl-4 flex items-center">
-                  <span className="text-sm font-medium text-bookswap-navy mr-2">{user.username}</span>
-                  <Button variant="outline" size="sm" onClick={handleLogout}>
+                <Link to="/welcome" className="nav-link font-medium">Books</Link>
+                <Link to="/wishlist" className="nav-link font-medium">Wishlist</Link>
+                <Link to="/add-book" className="nav-link font-medium">Add Book</Link>
+                <div className="flex flex-col items-center mt-6 gap-2">
+                  <span className="text-bookswap-navy font-medium">
+                    Hi, {user?.username}
+                  </span>
+                  <Button 
+                    variant="outline"
+                    onClick={handleLogout}
+                    className="text-bookswap-coral border-bookswap-coral hover:bg-bookswap-coral/10 mt-2"
+                  >
                     <LogOut className="h-4 w-4 mr-2" />
                     Logout
                   </Button>
                 </div>
               </>
             ) : (
-              <>
-                <Link to="/login">
-                  <Button variant="ghost">Login</Button>
+              <div className="flex flex-col items-center gap-4 mt-6">
+                <Link to="/login" className="button-outline w-full text-center">Login</Link>
+                <Link to="/signup" className="button-primary w-full text-center">
+                  Sign Up
                 </Link>
-                <Link to="/signup">
-                  <Button variant="primary">Sign Up</Button>
-                </Link>
-              </>
+              </div>
             )}
-          </nav>
-          
-          {/* Mobile menu button */}
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleMenu}>
-            <Menu className="h-6 w-6" />
-          </Button>
+          </div>
         </div>
-      </header>
-      
-      {/* Mobile menu */}
-      {renderMobileMenu()}
-    </>
+      )}
+    </nav>
   );
 };
 

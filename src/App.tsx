@@ -11,7 +11,6 @@ import Login from "./pages/Login";
 import Welcome from "./pages/Welcome";
 import AddBook from "./pages/AddBook";
 import Wishlist from "./pages/Wishlist";
-import SwapRequests from "./pages/SwapRequests";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +27,6 @@ const App = () => (
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/add-book" element={<AddBook />} />
           <Route path="/wishlist" element={<Wishlist />} />
-          <Route path="/swap-requests" element={<SwapRequests />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
